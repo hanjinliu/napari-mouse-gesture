@@ -19,6 +19,8 @@ class Gesture(Enum):
             return _ARROWS[self]
         elif format_spec == "t":
             return _TRIANGLES[self]
+        elif format_spec == "s":
+            return self.name
         raise ValueError(f"Unknown format specifier: {format_spec!r}")
 
 
@@ -116,8 +118,13 @@ class GestureCombo:
         )
 
     def __repr__(self) -> str:
-        fmt = "".join(format(ges, "a") for ges in self)
+        fmt = "".join(repr(ges, "a") for ges in self)
         return f"GestureCombo({fmt})"
+
+    def __format__(self, format_spec: str) -> str:
+        if format_spec == "s":
+            return "-".join(format(ges, format_spec) for ges in self)
+        return "".join(format(ges, format_spec) for ges in self)
 
 
 class GestureRegistry(MutableMapping[GestureCombo, Callable]):

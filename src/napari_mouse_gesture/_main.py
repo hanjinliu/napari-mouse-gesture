@@ -5,9 +5,10 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 import numpy as np
+from psygnal import Signal
 
 from napari_mouse_gesture._classifier import diff_classifier
-from napari_mouse_gesture._gesture import GestureRegistry
+from napari_mouse_gesture._gesture import GestureCombo, GestureRegistry
 from napari_mouse_gesture._types import LayerInfo, MouseEvent, Trigger
 
 if TYPE_CHECKING:
@@ -18,6 +19,8 @@ MOUSE_MOVE = "mouse_move"
 
 
 class MouseGestureProvider:
+    gestured = Signal(GestureCombo)
+
     def __init__(
         self,
         viewer: napari.Viewer,
@@ -26,6 +29,8 @@ class MouseGestureProvider:
         self._trigger = Trigger(trigger)
         self._viewer_ref = weakref.ref(viewer)
         self._registry = GestureRegistry()
+
+        self.gestured.connect(self._call_callbacks)
 
     @property
     def trigger(self) -> Trigger:
@@ -40,29 +45,32 @@ class MouseGestureProvider:
             raise RuntimeError("The viewer has been garbage collected.")
         return viewer
 
+    def _call_callbacks(self, combo: GestureCombo):
+        if cb := self._registry.get(combo):
+            cb()
+
     def set_viewer_gesture(self):
         self.viewer.mouse_drag_callbacks.append(self.viewer_mouse_callback)
+        return None
+
+    def reset_viewer_gesture(self):
+        self.viewer.mouse_drag_callbacks.remove(self.viewer_mouse_callback)
         return None
 
     def set_layer_gesture(self, layer: Layer):
         layer.mouse_drag_callbacks.append(self.layer_mouse_callback)
         return None
 
+    def reset_layer_gesture(self, layer: Layer):
+        layer.mouse_drag_callbacks.remove(self.layer_mouse_callback)
+        return None
+
     @contextmanager
-    def temporary_layer(self):
+    def dragging(self):
         """Create a temporary layer for displaying mouse gesture."""
         layers = list(
             self.viewer.layers.selection
         )  # get selected layers first
-
-        # prepare temporary layer
-        temp_layer = self.viewer.add_shapes(
-            [[[0, 0], [0, 0]]],
-            edge_color=[(0, 1, 0, 0.4)],
-            edge_width=10,
-            shape_type="path",
-            name="Temporary Layer",
-        )
 
         # disable selected layers
         layer_infos: list[LayerInfo] = []
@@ -71,11 +79,9 @@ class MouseGestureProvider:
             layer.interactive = False
 
         try:
-            temp_layer.interactive = False
-            yield temp_layer
+            yield
         finally:
             # restore original state
-            self.viewer.layers.remove(temp_layer)
             for layer, interactive in layer_infos:
                 if layer not in self.viewer.layers:
                     layers.remove(layer)
@@ -86,14 +92,13 @@ class MouseGestureProvider:
         if event.button != 2:
             return
 
-        with self.temporary_layer() as temp_layer:
+        with self.dragging():
             points = np.asarray(event.position).reshape(1, 2)
             yield
             while event.type == MOUSE_MOVE:
                 points = np.append(
                     points, np.asarray(event.position).reshape(1, 2), axis=0
                 )
-                temp_layer.data = points
                 yield
         self._call_by_trajectory(points)
 
@@ -103,18 +108,18 @@ class MouseGestureProvider:
         if event.button != 2:
             return
 
-        with self.temporary_layer() as temp_layer:
+        with self.dragging():
             points = np.asarray(event.position).reshape(1, 2)
             yield
             while event.type == MOUSE_MOVE:
                 np.append(
                     points, np.asarray(event.position).reshape(1, 2), axis=0
                 )
-                temp_layer.data = points
                 yield
 
         self._call_by_trajectory(points)
         return None
 
     def _call_by_trajectory(self, traj: np.ndarray):
-        print(diff_classifier(traj))
+        combo = diff_classifier(traj)
+        self.gestured.emit(combo)
