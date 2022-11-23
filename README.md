@@ -7,7 +7,7 @@
 [![codecov](https://codecov.io/gh/hanjinliu/napari-mouse-gesture/branch/main/graph/badge.svg)](https://codecov.io/gh/hanjinliu/napari-mouse-gesture)
 [![napari hub](https://img.shields.io/endpoint?url=https://api.napari-hub.org/shields/napari-mouse-gesture)](https://napari-hub.org/plugins/napari-mouse-gesture)
 
-Install mouse gesture functions into napari viewers
+Install mouse gesture functions into napari viewers, activated by right-click drags.
 
 ![](example.gif)
 
