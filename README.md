@@ -9,6 +9,8 @@
 
 Install mouse gesture functions into napari viewers
 
+![](example.gif)
+
 ----------------------------------
 
 This [napari] plugin was generated with [Cookiecutter] using [@napari]'s [cookiecutter-napari-plugin] template.

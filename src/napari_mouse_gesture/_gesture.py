@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Callable, Iterator, MutableMapping
+from typing import Callable, Iterator, MutableMapping, Sequence, Union
 
 
 class Gesture(Enum):
@@ -148,3 +148,6 @@ class GestureRegistry(MutableMapping[GestureCombo, Callable]):
 
     def __len__(self):
         return len(self._registry)
+
+
+GestureLike = Union[str, Sequence[str], GestureCombo]

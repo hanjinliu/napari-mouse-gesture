@@ -2,24 +2,30 @@ from __future__ import annotations
 
 import weakref
 from contextlib import contextmanager
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, TypeVar
 
 import numpy as np
 from psygnal import Signal
 
 from napari_mouse_gesture._classifier import diff_classifier
-from napari_mouse_gesture._gesture import GestureCombo, GestureRegistry
+from napari_mouse_gesture._gesture import (
+    GestureCombo,
+    GestureLike,
+    GestureRegistry,
+)
 from napari_mouse_gesture._types import LayerInfo, MouseEvent, Trigger
 
 if TYPE_CHECKING:
     import napari
     from napari.layers import Layer
 
+_F = TypeVar("_F", bound=Callable)
 MOUSE_MOVE = "mouse_move"
 
 
 class MouseGestureProvider:
     gestured = Signal(GestureCombo)
+    _current_instance: MouseGestureProvider | None = None
 
     def __init__(
         self,
@@ -31,6 +37,8 @@ class MouseGestureProvider:
         self._registry = GestureRegistry()
 
         self.gestured.connect(self._call_callbacks)
+
+        self.__class__._current_instance = self
 
     @property
     def trigger(self) -> Trigger:
@@ -67,10 +75,9 @@ class MouseGestureProvider:
 
     @contextmanager
     def dragging(self):
-        """Create a temporary layer for displaying mouse gesture."""
-        layers = list(
-            self.viewer.layers.selection
-        )  # get selected layers first
+        """Temporary context for mouse gesture."""
+        # get selected layers first
+        layers = list(self.viewer.layers.selection)
 
         # disable selected layers
         layer_infos: list[LayerInfo] = []
@@ -89,6 +96,7 @@ class MouseGestureProvider:
             self.viewer.layers.selection = layers
 
     def viewer_mouse_callback(self, viewer: napari.Viewer, event: MouseEvent):
+        """Callback function for viewer mouse drag event."""
         if event.button != 2:
             return
 
@@ -105,6 +113,7 @@ class MouseGestureProvider:
         return None
 
     def layer_mouse_callback(self, layer: Layer, event: MouseEvent):
+        """Callback function for layer mouse drag event."""
         if event.button != 2:
             return
 
@@ -123,3 +132,61 @@ class MouseGestureProvider:
     def _call_by_trajectory(self, traj: np.ndarray):
         combo = diff_classifier(traj)
         self.gestured.emit(combo)
+        return None
+
+    def register_gesture(
+        self,
+        gesture: GestureLike,
+        *,
+        overwrite: bool = False,
+    ) -> Callable[[_F], _F]:
+        """
+        Register a callback function for the given gesture.
+
+        You can use arrows (↑, ←, ↓, →)
+        >>> @provider.register_gesture("↑←")
+        >>> def do_something(viewer):
+        >>>     ...
+
+        or triangles (^, <, v, >)
+        >>> @provider.register_gesture("^<")
+        >>> def do_something(viewer):
+        >>>     ...
+
+        or words (up, down, left, right) split by "-".
+        >>> @provider.register_gesture("up-left")
+        >>> def do_something(viewer):
+        >>>     ...
+
+        Parameters
+        ----------
+        gesture : GestureLike
+            Gesture string.
+        overwrite : bool, default is False
+            If true, allow to overwrite the existing gesture.
+        """
+
+        def wrapper(func):
+            if not overwrite and gesture in self._registry:
+                raise ValueError(
+                    f"Gesture {gesture} already exists. Use `overwrite=True`"
+                    " to overwrite it."
+                )
+            self._registry[gesture] = func
+            return func
+
+        return wrapper
+
+
+def current_instance() -> MouseGestureProvider | None:
+    return MouseGestureProvider._current_instance
+
+
+def register_gesture(
+    gesture: GestureLike,
+    *,
+    overwrite: bool = False,
+) -> Callable[[_F], _F]:
+    return MouseGestureProvider._current_instance.register_gesture(
+        gesture, overwrite
+    )

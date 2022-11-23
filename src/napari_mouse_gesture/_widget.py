@@ -1,15 +1,15 @@
 from typing import TYPE_CHECKING
 
+import napari
+from qtpy import QtCore
 from qtpy import QtWidgets as QtW
 
 if TYPE_CHECKING:
-    import napari
-
     from napari_mouse_gesture._gesture import GestureCombo
 
 
 class QMouseGestureWidget(QtW.QWidget):
-    def __init__(self, viewer: "napari.Viewer"):
+    def __init__(self, viewer: napari.Viewer):
         from napari_mouse_gesture._main import MouseGestureProvider
 
         super().__init__()
@@ -25,6 +25,9 @@ class QMouseGestureWidget(QtW.QWidget):
 
         self._gesture_line_edit = QtW.QLineEdit()
         self._gesture_line_edit.setReadOnly(True)
+        font = self._gesture_line_edit.font()
+        font.setPointSize(22)
+        self._gesture_line_edit.setFont(font)
         _layout.addWidget(self._gesture_line_edit)
 
         self._activate_viewer_gesture_box = QtW.QCheckBox(
@@ -36,7 +39,10 @@ class QMouseGestureWidget(QtW.QWidget):
         _layout.addWidget(self._activate_viewer_gesture_box)
 
     def _on_gestured(self, ges: "GestureCombo"):
+        # update line edit
         self._gesture_line_edit.setText(f"{ges:a}")
+        # clear it later
+        QtCore.QTimer.singleShot(1600, self._gesture_line_edit.clear)
 
     def _on_viewer_activation_changed(self, checked: bool):
         if checked:
