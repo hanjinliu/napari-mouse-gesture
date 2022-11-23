@@ -11,6 +11,29 @@ Install mouse gesture functions into napari viewers
 
 ![](example.gif)
 
+### Register callbacks
+
+Use `register_gesture` to register custom callback functions.
+
+```python
+from napari_mouse_gesture import register_gesture
+
+# use standard strings (up, left, down, right) split by "-"
+@register_gesture("up-left")
+def _callback(viewer):
+    print("called")
+
+# use triangles (^, <, v, >)
+@register_gesture("^<")
+def _callback(viewer):
+    print("called")
+
+# use arrows (↑, ←, ↓, →)
+@register_gesture("↑←")
+def _callback(viewer):
+    print("called")
+```
+
 ----------------------------------
 
 This [napari] plugin was generated with [Cookiecutter] using [@napari]'s [cookiecutter-napari-plugin] template.
