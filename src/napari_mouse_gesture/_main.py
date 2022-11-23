@@ -55,7 +55,7 @@ class MouseGestureProvider:
 
     def _call_callbacks(self, combo: GestureCombo):
         if cb := self._registry.get(combo):
-            cb()
+            cb(self.viewer)
 
     def set_viewer_gesture(self):
         self.viewer.mouse_drag_callbacks.append(self.viewer_mouse_callback)
@@ -179,6 +179,7 @@ class MouseGestureProvider:
 
 
 def current_instance() -> MouseGestureProvider | None:
+    """Return the current instance of MouseGestureProvider."""
     return MouseGestureProvider._current_instance
 
 
@@ -187,6 +188,10 @@ def register_gesture(
     *,
     overwrite: bool = False,
 ) -> Callable[[_F], _F]:
-    return MouseGestureProvider._current_instance.register_gesture(
-        gesture, overwrite
-    )
+    ins = MouseGestureProvider._current_instance
+    if ins is None:
+        raise RuntimeError("No instance of MouseGestureProvider is found.")
+    return ins.register_gesture(gesture, overwrite=overwrite)
+
+
+register_gesture.__doc__ = MouseGestureProvider.register_gesture.__doc__

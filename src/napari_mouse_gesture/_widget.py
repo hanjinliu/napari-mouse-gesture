@@ -40,9 +40,15 @@ class QMouseGestureWidget(QtW.QWidget):
 
     def _on_gestured(self, ges: "GestureCombo"):
         # update line edit
-        self._gesture_line_edit.setText(f"{ges:a}")
+        text = f"{ges:a}"
+        self._gesture_line_edit.setText(text)
+
         # clear it later
-        QtCore.QTimer.singleShot(1600, self._gesture_line_edit.clear)
+        def _clear():
+            if self._gesture_line_edit.text() == text:
+                self._gesture_line_edit.setText("")
+
+        QtCore.QTimer.singleShot(1600, _clear)
 
     def _on_viewer_activation_changed(self, checked: bool):
         if checked:

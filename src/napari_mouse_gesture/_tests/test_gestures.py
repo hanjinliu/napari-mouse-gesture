@@ -34,6 +34,33 @@ def test_from_triangles():
         GestureCombo.from_triangles("^^")
 
 
+@pytest.mark.parametrize(
+    "a, b, c",
+    [
+        ("up", "^", "↑"),
+        ("down", "v", "↓"),
+        ("left", "<", "←"),
+        ("right", ">", "→"),
+        ("up-left", "^<", "↑←"),
+        ("left-right", "<>", "←→"),
+    ],
+)
+def test_same_hash(a, b, c):
+    g0 = GestureCombo.from_string(a)
+    g1 = GestureCombo.from_triangles(b)
+    g2 = GestureCombo.from_arrows(c)
+    assert hash(g0) == hash(g1) == hash(g2)
+
+
+def test_same_hash_in_dict():
+    d = {}
+    g0 = GestureCombo.from_string("up")
+    g1 = GestureCombo.from_string("up")
+    d[g0] = 0
+    assert g1 in d
+    d[g1]
+
+
 def test_no_collision():
     gestures = [
         "^",
